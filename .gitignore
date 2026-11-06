@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production builds
+dist/
+*/dist/
+build/
+*/build/
+
+# Environment and sensitive credential files
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Local SQLite databases
+*.db
+*.db-journal
+dev.db
+backend/dev.db
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# Embedded MongoDB Local Data & WiredTiger files
+data/
+backend/data/
+*/data/
+*.wt
+*.lock
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cache and logs
+.vite/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

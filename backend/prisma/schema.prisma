@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Relational schema is PostgreSQL-compatible. Local hackathon demo uses SQLite
+// so the app can run without a system Postgres install. Switch provider to
+// "postgresql" and DATABASE_URL to a Postgres connection string for production.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String
+  phone        String?
+  isActive     Boolean  @default(true)
+  hospitalId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hospital      Hospital?      @relation(fields: [hospitalId], references: [id])
+  ambulance     Ambulance?
+  notifications Notification[]
+}
+
+model Hospital {
+  id               String   @id @default(cuid())
+  name             String
+  address          String
+  city             String
+  latitude         Float
+  longitude        Float
+  phone            String
+  facilities       String
+  readinessStatus  String   @default("READY")
+  traumaCapable    Boolean  @default(false)
+  cardiacCapable   Boolean  @default(false)
+  maternityCapable Boolean  @default(false)
+  isDemoData       Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  staff       User[]
+  doctors     Doctor[]
+  beds        EmergencyBeds?
+  ambulances  EmergencyRequest[]
+  notifications Notification[]
+}
+
+model Doctor {
+  id              String   @id @default(cuid())
+  hospitalId      String
+  name            String
+  specialization  String
+  phone           String?
+  isDemoData      Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  hospital     Hospital            @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  availability DoctorAvailability?
+}
+
+model DoctorAvailability {
+  id          String   @id @default(cuid())
+  doctorId    String   @unique
+  isAvailable Boolean  @default(true)
+  shiftNote   String?
+  updatedAt   DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyBeds {
+  id        String   @id @default(cuid())
+  hospitalId String  @unique
+  total     Int
+  available Int
+  updatedAt DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+}
+
+model Ambulance {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  vehicleCode  String   @unique
+  status       String   @default("IDLE")
+  currentLat   Float?
+  currentLng   Float?
+  isDemoData   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locations   AmbulanceLocation[]
+  emergencies EmergencyRequest[]
+}
+
+model Patient {
+  id             String   @id @default(cuid())
+  displayName    String
+  age            Int?
+  gender         String?
+  notes          String?
+  emergencyType  String
+  createdAt      DateTime @default(now())
+
+  emergencies EmergencyRequest[]
+}
+
+model EmergencyRequest {
+  id                      String   @id @default(cuid())
+  ambulanceId             String
+  patientId               String
+  hospitalId              String?
+  recommendedHospitalId   String?
+  recommendationReasons   String
+  type                    String
+  status                  String   @default("CREATED")
+  pickupLat               Float
+  pickupLng               Float
+  pickupAddress           String?
+  etaMinutes              Int?
+  distanceKm              Float?
+  routeJson               String?
+  greenCorridorActive     Boolean  @default(false)
+  hospitalReadinessNote   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  acceptedAt              DateTime?
+  declinedAt              DateTime?
+  enRouteAt               DateTime?
+  arrivedAt               DateTime?
+  completedAt             DateTime?
+
+  ambulance     Ambulance                @relation(fields: [ambulanceId], references: [id])
+  patient       Patient                  @relation(fields: [patientId], references: [id])
+  hospital      Hospital?                @relation(fields: [hospitalId], references: [id])
+  locations     AmbulanceLocation[]
+  priorities    TrafficPriorityRequest[]
+  notifications Notification[]
+  history       EmergencyHistory?
+}
+
+model AmbulanceLocation {
+  id                 String   @id @default(cuid())
+  ambulanceId        String
+  emergencyRequestId String?
+  latitude           Float
+  longitude          Float
+  heading            Float?
+  speedKmh           Float?
+  recordedAt         DateTime @default(now())
+
+  ambulance Ambulance         @relation(fields: [ambulanceId], references: [id], onDelete: Cascade)
+  emergency EmergencyRequest? @relation(fields: [emergencyRequestId], references: [id])
+}
+
+model TrafficSignal {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  latitude      Float
+  longitude     Float
+  status        String   @default("RED")
+  mode          String   @default("NORMAL")
+  sequenceOrder Int
+  isDemoData    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  priorities TrafficPriorityRequest[]
+}
+
+model TrafficPriorityRequest {
+  id                 String   @id @default(cuid())
+  emergencyRequestId String
+  signalId           String
+  status             String   @default("PENDING")
+  distanceMeters     Float?
+  activatedAt        DateTime?
+  releasedAt         DateTime?
+  createdAt          DateTime @default(now())
+
+  emergency EmergencyRequest @relation(fields: [emergencyRequestId], references: [id], onDelete: Cascade)
+  signal    TrafficSignal    @relation(fields: [signalId], references: [id])
+}
+
+model Notification {
+  id                 String   @id @default(cuid())
+  userId             String?
+  hospitalId         String?
+  emergencyRequestId String?
+  type               String
+  title              String
+  body               String
+  payload            String?
+  isRead             Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  user      User?             @relation(fields: [userId], references: [id])
+  hospital  Hospital?         @relation(fields: [hospitalId], references: [id])
+  emergency EmergencyRequest? @relation(fields: [emergencyRequestId], references: [id])
+}
+
+model EmergencyHistory {
+  id                 String   @id @default(cuid())
+  emergencyRequestId String   @unique
+  summary            String
+  timeline           String
+  createdAt          DateTime @default(now())
+
+  emergency EmergencyRequest @relation(fields: [emergencyRequestId], references: [id], onDelete: Cascade)
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  detail    String
+  createdAt DateTime @default(now())
+}

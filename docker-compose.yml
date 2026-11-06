@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lifeline360-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lifeline
+      POSTGRES_PASSWORD: lifeline
+      POSTGRES_DB: lifeline360
+    ports:
+      - "5432:5432"
+    volumes:
+      - lifeline360_pg:/var/lib/postgresql/data
+
+volumes:
+  lifeline360_pg:
